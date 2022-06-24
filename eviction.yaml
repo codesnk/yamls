@@ -1,0 +1,9 @@
+# this can be sent to a Pod's /eviction URI to evict it. e.g. for a busybox Pod in test namespace, you can run
+# curl -X POST --data-binary @eviction.yaml -H "Content-Type: application/yaml" http://localhost:8001/api/v1/namespaces/test/pods/busybox/eviction
+
+apiVersion: policy/v1
+kind: Eviction
+metadata:
+  name: busybox # must match the name of the pod
+  namespace: default
+  propagationPolicy: orphan
