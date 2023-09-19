@@ -1,0 +1,3 @@
+# Start a pod and get a shell from inside Kubernetes cluster
+kubectl run my-shell --rm -i --tty --image ubuntu -- bash
+
