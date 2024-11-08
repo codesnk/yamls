@@ -1,0 +1,62 @@
+# This file contains some explanation of how one service account in default namespace can access pods in a different test namespace.
+
+# 1..... Create a Service account with a name i.e., snk-sa below in the default namespace
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: snk-sa
+  namespace: default
+---
+
+# 2.... Create a Pod in the default namespace with the above service account. This pod will be used to access pods in another namespace
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  serviceAccountName: snk-sa
+  containers:
+    - name: nginx
+      image: nginx
+
+---
+# 3... In a different namesapce e.g. test, create the following Role (allowing access to Pods) and Role-Binding connecting the snk-sa service account from default namespace to the ns-admin role in test namespace.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ns-admin # Name of the role
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"] # Allows Get, Delete, List of pods in the test namespace
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: new-admin-binding
+subjects:
+  - kind: ServiceAccount
+    name: snk-sa
+    namespace: default  # Note that subject points to snk-sa in default namespace
+roleRef:
+  kind: Role
+  name: ns-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+
+# 4.... Create a pod in the test namespace which will then be accessed from the nginx pod in the default namespace.
+# The same nginx pod spec can be used but change the name e.g. to nginx2 for differentiation.
+
+# 5.... To access from the nginx pod in default namespace, nginx2 in test namespace, we can exec into nginx in default namespace as below
+# $ kubectl exec -it nginx -- /bin/bash
+
+# 6... Get the token assigned via service account to talk to K8s API server as below.
+# $ TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+
+# 7... Access the nginx2 pod in the test namespace using the token as below.
+# $ curl -sSk -H "Authorization: Bearer $TOKEN" https://kubernetes.default:443/api/v1/namespaces/test/nginx2
+
+# 8... You can even delete nginx2 from nginx in default namespace using the same curl command.
+# $ curl -sSk -H "Authorization: Bearer $TOKEN" -X DELETE https://kubernetes.default:443/api/v1/namespaces/test/pods/nginx2
